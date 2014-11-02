@@ -65,8 +65,11 @@ trait Solver extends GameDef {
            explored: Set[Block]): Stream[(Block, List[Move])] = {
 
     val moves = newNeighborsOnly(initial, explored)
-    for (m <- moves) yield m
-    for (m <- moves; mm <- from(initial :+ m, explored + m._1)) yield mm // Is it right?
+    if (moves.isEmpty) Stream.empty
+    else {
+      for (m <- moves) yield m
+      for (m <- moves; mm <- from(m +: initial, explored + m._1)) yield mm // Is it right?
+    }
   }
 
   /**
