@@ -61,15 +61,26 @@ trait Solver extends GameDef {
    * of different paths - the implementation should naturally
    * construct the correctly sorted stream.
    */
+
+  type BlockStream = Stream[(Block, List[Move])]
+
   def from(initial: Stream[(Block, List[Move])],
            explored: Set[Block]): Stream[(Block, List[Move])] = {
 
-    val moves = newNeighborsOnly(initial, explored)
-    if (moves.isEmpty) Stream.empty
-    else {
-      for (m <- moves) yield m
-      for (m <- moves; mm <- from(m +: initial, explored + m._1)) yield mm // Is it right?
+    def helper (initial: BlockStream, explored: Set[Block], queue: List[(Block, List[Move])]): Stream[(Block, List[Move])] = {
+      println(initial)
+      if (initial.isEmpty) Stream.empty
+      else if (queue.isEmpty) {
+        // expand next
+        val neighbors = neighborsWithHistory(initial.head._1, initial.head._2)
+        val moves = newNeighborsOnly(neighbors, explored)
+        for (m <- moves; mm <- helper(m +: initial, explored + m._1, moves.toList)) yield mm
+      } else {
+        helper(queue.head +: initial, explored + queue.head._1, queue.tail)
+      }
     }
+
+    helper(initial, explored, List[(Block, List[Move])]())
   }
 
   /**
