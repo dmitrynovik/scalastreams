@@ -80,7 +80,8 @@ class BloxorzSuite extends FunSuite {
   test("optimal solution for level 1") {
     new Level1 {
       val s = solve(solution)
-      assert(s == Block(goal, goal))
+      val bg = Block(goal, goal)
+      assert(s == bg )
     }
   }
 
