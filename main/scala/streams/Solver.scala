@@ -67,21 +67,18 @@ trait Solver extends GameDef {
   def from(initial: Stream[(Block, List[Move])],
            explored: Set[Block]): Stream[(Block, List[Move])] = {
 
-    def helper (initial: BlockStream, explored: Set[Block], queue: List[(Block, List[Move])]): Stream[(Block, List[Move])] = {
-      println(initial)
-      if (initial.isEmpty) Stream.empty
-      else if (queue.isEmpty) {
-        // expand next
-        val neighbors = neighborsWithHistory(initial.head._1, initial.head._2)
-        val moves = newNeighborsOnly(neighbors, explored)
-        for (m <- moves; mm <- helper(m +: initial, explored + m._1, moves.toList)) yield mm
-      } else {
-        helper(queue.head +: initial, explored + queue.head._1, queue.tail)
-      }
+    if (initial.isEmpty) Stream.empty
+    else {
+      val neighbors = neighborsWithHistory(initial.head._1, initial.head._2)
+      val moves = newNeighborsOnly(neighbors, explored)
+      (for (m <- moves) yield m) ++
+      (for {
+        m <- moves
+        mm <- from(m +: initial, explored + m._1)
+      } yield mm)
     }
-
-    helper(initial, explored, List[(Block, List[Move])]())
   }
+
 
   /**
    * The stream of all paths that begin at the starting block.
@@ -93,13 +90,8 @@ trait Solver extends GameDef {
    * Returns a stream of all possible pairs of the goal block along
    * with the history how it was reached.
    */
-  lazy val pathsToGoal: Stream[(Block, List[Move])] = {
+  lazy val pathsToGoal: Stream[(Block, List[Move])] = pathsFromStart.filter(head => done(head._1))
 
-    for {
-      path <- pathsFromStart
-      finish <- neighborsWithHistory(path._1, path._2) if done(finish._1)
-    } yield finish
-  }
 
   /**
    * The (or one of the) shortest sequence(s) of moves to reach the
