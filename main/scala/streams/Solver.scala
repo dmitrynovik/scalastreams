@@ -64,19 +64,32 @@ trait Solver extends GameDef {
 
   type BlockStream = Stream[(Block, List[Move])]
 
-  def from(initial: Stream[(Block, List[Move])],
-           explored: Set[Block]): Stream[(Block, List[Move])] = {
+  def merge[T](input: Stream[Stream[T]]): Stream[T] = {
 
+    if (input.isEmpty) Stream.empty
+    else {
+      val nonempty = input filter (m => !m.isEmpty)
+      (for (s <- nonempty) yield s.head ) ++
+        (for (next <-merge(nonempty.map(s => s.tail))) yield next )
+    }
+  }
+
+  def extend(initial: Stream[(Block, List[Move])], explored: Set[Block]): Stream[(Block, List[Move])] = {
     if (initial.isEmpty) Stream.empty
     else {
       val neighbors = neighborsWithHistory(initial.head._1, initial.head._2)
-      val moves = newNeighborsOnly(neighbors, explored)
-      (for (m <- moves) yield m) ++
+      newNeighborsOnly(neighbors, explored)
+    }
+  }
+
+  def from(initial: Stream[(Block, List[Move])], explored: Set[Block]): Stream[(Block, List[Move])] = {
+
+    val moves = extend(initial, explored)
+    (for (m <- moves) yield m) ++
       (for {
         m <- moves
         mm <- from(m +: initial, explored + m._1)
       } yield mm)
-    }
   }
 
 
@@ -84,7 +97,7 @@ trait Solver extends GameDef {
    * The stream of all paths that begin at the starting block.
    */
   lazy val pathsFromStart: Stream[(Block, List[Move])] =
-    from(Stream((startBlock, List[Move]())), Set(startBlock))
+    from(Stream((startBlock, Nil)), Set(startBlock))
 
   /**
    * Returns a stream of all possible pairs of the goal block along
