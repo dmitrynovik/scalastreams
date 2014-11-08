@@ -62,38 +62,28 @@ trait Solver extends GameDef {
    * construct the correctly sorted stream.
    */
 
-  type BlockStream = Stream[(Block, List[Move])]
+  type BlockStream  = Stream[(Block, List[Move])]
+  type BlockHistory = (Block, List[Move])
 
-  def merge[T](input: Stream[Stream[T]]): Stream[T] = {
+  def pathsFrom(initial: BlockHistory, explored: Set[Block]): BlockStream = {
+    val neighbors = neighborsWithHistory(initial._1, initial._2)
+    newNeighborsOnly(neighbors, explored)
+  }
 
-    if (input.isEmpty) Stream.empty
+  def fromHelper(paths: Set[BlockHistory], explored: Set[Block]): Stream[Set[BlockHistory]] = {
+    if (paths.isEmpty) Stream.empty
     else {
-      val nonempty = input filter (m => !m.isEmpty)
-      (for (s <- nonempty) yield s.head ) ++
-        (for (next <-merge(nonempty.map(s => s.tail))) yield next )
+      val more = for {
+        path <- paths
+        next <- pathsFrom(path, explored)
+        if !(explored contains next._1)
+      } yield next
+      paths #:: fromHelper(more, explored ++ (more map (_._1)))
     }
   }
 
-  def extend(initial: Stream[(Block, List[Move])], explored: Set[Block]): Stream[(Block, List[Move])] = {
-    if (initial.isEmpty) Stream.empty
-    else {
-      val neighbors = neighborsWithHistory(initial.head._1, initial.head._2)
-      newNeighborsOnly(neighbors, explored)
-    }
-  }
-
-  def from(initial: Stream[(Block, List[Move])], explored: Set[Block]): Stream[(Block, List[Move])] = {
-
-    val moves = extend(initial, explored)
-    val more = for {
-      m <- moves
-      next <- from(Stream(m), explored + m._1)
-    } yield {
-      println(next)
-      next
-    }
-
-    moves ++ more
+  def from(initial: BlockStream, explored: Set[Block]): BlockStream = {
+    fromHelper(initial.toSet, explored).flatMap(i => i)
   }
 
 
